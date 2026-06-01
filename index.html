@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
 <title>РГУ им. Есенина — Карта корпусов</title>
-<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Raleway:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght=700;900&family=Raleway:wght=300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://api-maps.yandex.ru/2.1/?apikey=7b36fbc9-b390-4016-be81-5a1b45637a63&lang=ru_RU" type="text/javascript"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -89,43 +89,60 @@ header span { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.05em; t
 }
 #inset-mini-map { width: 100%; height: 100%; }
 
-/* Модальное окно — строго фиксированная лаконичная карточка */
+/* Модальное окно */
 .modal {
   display: none;
   position: fixed;
   top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.8);
-  backdrop-filter: blur(6px);
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(8px);
   z-index: 1000;
   justify-content: center;
   align-items: center;
-  padding: 16px;
+  padding: 12px;
 }
 .modal.visible { display: flex; }
 .modal-content {
-  width: 100%; max-width: 400px;
-  background: var(--card); border-radius: 16px; border: 1px solid var(--accent);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.6); position: relative;
+  width: 100%; max-width: 440px; max-height: 90vh;
+  background: var(--card); border-radius: 20px; border: 1px solid var(--accent);
+  overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.6); position: relative;
 }
-.modal-info { padding: 24px; }
-.modal-name { font-family: 'Unbounded', sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 8px; line-height: 1.4; color: var(--text); }
-.modal-addr { font-size: 13px; color: var(--muted); margin-bottom: 20px; font-weight: 400; }
+
+/* Блок видео обратно на месте */
+.modal-video {
+  width: 100%; aspect-ratio: 16/9; background: #000; position: relative;
+}
+.modal-video video {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.modal-video .modal-placeholder {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; background: linear-gradient(135deg, #1a1f2e, #0d1117); z-index: 2;
+}
+.play-btn {
+  width: 56px; height: 56px; background: var(--accent); color: #0d0f14;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 1.2rem; box-shadow: 0 4px 12px rgba(232,184,75,0.3);
+  transition: transform 0.2s;
+}
+.play-btn:hover { transform: scale(1.05); }
+
+.modal-info { padding: 20px; }
+.modal-name { font-family: 'Unbounded', sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 6px; line-height: 1.3; color: var(--text); }
+.modal-addr { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
 
 .modal-link {
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  font-size: 13px; font-weight: 600; color: #0d0f14; background: var(--accent);
-  text-decoration: none; padding: 12px 14px; border-radius: 8px;
-  transition: background 0.2s;
+  font-size: 12px; font-weight: 500; color: #0d0f14; background: var(--accent);
+  text-decoration: none; padding: 11px 14px; border-radius: 10px;
 }
-.modal-link:hover { background: #f3c967; }
 .modal-close {
-  position: absolute; top: 12px; right: 12px;
-  background: rgba(255,255,255,0.05); border-radius: 50%; width: 28px; height: 28px;
+  position: absolute; top: 10px; right: 10px;
+  background: rgba(0,0,0,0.5); border-radius: 50%; width: 32px; height: 32px;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 14px; color: var(--muted); z-index: 1020;
-  transition: color 0.2s;
+  cursor: pointer; font-size: 16px; color: white; z-index: 1020;
 }
-.modal-close:hover { color: #fff; }
 
 /* Навигационная лента кнопок */
 .chips {
@@ -178,6 +195,13 @@ header span { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.05em; t
 <div class="modal" id="modal">
   <div class="modal-content">
     <div class="modal-close" id="modal-close">✕</div>
+    <div class="modal-video" id="modal-video">
+      <div class="modal-placeholder" id="modal-placeholder">
+        <div class="play-btn" id="modal-play-btn">▶</div>
+        <span style="font-size: 12px; color: var(--muted);">Видео-превью корпуса</span>
+      </div>
+      <video id="modal-video-elem" controls preload="none"></video>
+    </div>
     <div class="modal-info">
       <div class="modal-name" id="modal-name"></div>
       <div class="modal-addr" id="modal-addr"></div>
@@ -188,14 +212,14 @@ header span { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.05em; t
 
 <script>
 const buildings = [
-  { id:0, label:"ИЕН | ИИЯ | ИИФНП | ИФМиКН", address:"ул. Свободы, 46", name:"ИЕН | ИИЯ | ИИФНП | ИФМиКН", fullAddress:"📍 ул. Свободы, 46, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_svobody_46/", lat:54.628879, lng:39.752508, icon:"⭐" },
-  { id:1, label:"Корпус 46к1", address:"ул. Свободы, 46к1", name:"Учебный корпус (46к1)", fullAddress:"📍 ул. Свободы, 46к1, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_svobody_46k1/", lat:54.630010, lng:39.752682, icon:"🏫" },
-  { id:2, label:"Корпус 46к2", address:"ул. Свободы, 46к2", name:"Учебный корпус (46к2)", fullAddress:"📍 ул. Свободы, 46к2, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_svobody_46k2/", lat:54.629782, lng:39.752190, icon:"🏫" },
-  { id:3, label:"Ленина, 20", address:"ул. Ленина, 20", name:"Корпус на Ленина", fullAddress:"📍 ул. Ленина, 20, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_lenina_20/", lat:54.624633, lng:39.752238, icon:"🏰" },
-  { id:4, label:"ФРФНК", address:"ул. Ленина, 20А", name:"ФРФНК", fullAddress:"📍 ул. Ленина, 20А, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_lenina_20a/", lat:54.624953, lng:39.752631, icon:"🏢" },
-  { id:5, label:"ФФКС | ИППСР", address:"ул. Полонского, 18", name:"ФФКС | ИППСР", fullAddress:"📍 ул. Полонского, 18, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_polonskogo_18/", lat:54.629275, lng:39.747663, icon:"🧠" },
-  { id:6, label:"Факультет экономики", address:"Первомайский пр-т, 49/2", name:"Факультет экономики", fullAddress:"📍 Первомайский проспект, 49/2, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/pervomayskiy_prospekt_49k2/", lat:54.628388, lng:39.710390, icon:"📊" },
-  { id:7, label:"ЮИ", address:"ул. Семинарская, 15", name:"Юридический институт (ЮИ)", fullAddress:"📍 ул. Семинарская, 15, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/seminarskaya_ulitsa_15/", lat:54.632567, lng:39.736563, icon:"⚖️" }
+  { id:0, label:"ИЕН | ИИЯ | ИИФНП | ИФМиКН", address:"ул. Свободы, 46", name:"ИЕН | ИИЯ | ИИФНП | ИФМиКН", fullAddress:"📍 ул. Свободы, 46, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_svobody_46/", lat:54.628879, lng:39.752508, icon:"⭐", video:"videos/Glavniy kafe.mov" }, // ТЕСТОВЫЙ РОЛИК ДЛЯ ГЛАВНОГО КОРПУСА ВСТАВЛЕН СЮДА
+  { id:1, label:"Корпус 46к1", address:"ул. Свободы, 46к1", name:"Учебный корпус (46к1)", fullAddress:"📍 ул. Свободы, 46к1, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_svobody_46k1/", lat:54.630010, lng:39.752682, icon:"🏫", video:"" },
+  { id:2, label:"Корпус 46к2", address:"ул. Свободы, 46к2", name:"Учебный корпус (46к2)", fullAddress:"📍 ул. Свободы, 46к2, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_svobody_46k2/", lat:54.629782, lng:39.752190, icon:"🏫", video:"" },
+  { id:3, label:"Ленина, 20", address:"ул. Ленина, 20", name:"Корпус на Ленина", fullAddress:"📍 ул. Ленина, 20, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_lenina_20/", lat:54.624633, lng:39.752238, icon:"🏰", video:"" },
+  { id:4, label:"ФРФНК", address:"ул. Ленина, 20А", name:"ФРФНК", fullAddress:"📍 ул. Ленина, 20А, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_lenina_20a/", lat:54.624953, lng:39.752631, icon:"🏢", video:"" },
+  { id:5, label:"ФФКС | ИППСР", address:"ул. Полонского, 18", name:"ФФКС | ИППСР", fullAddress:"📍 ул. Полонского, 18, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_polonskogo_18/", lat:54.629275, lng:39.747663, icon:"🧠", video:"" },
+  { id:6, label:"Факультет экономики", address:"Первомайский пр-т, 49/2", name:"Факультет экономики", fullAddress:"📍 Первомайский проспект, 49/2, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/pervomayskiy_prospekt_49k2/", lat:54.628388, lng:39.710390, icon:"📊", video:"" },
+  { id:7, label:"ЮИ", address:"ул. Семинарская, 15", name:"Юридический институт (ЮИ)", fullAddress:"📍 ул. Семинарская, 15, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/seminarskaya_ulitsa_15/", lat:54.632567, lng:39.736563, icon:"⚖️", video:"" } 
 ];
 
 let activeId = null;
@@ -299,7 +323,7 @@ ymaps.ready(function () {
   clusterer.add(geoObjects);
   myMap.geoObjects.add(clusterer);
   
-  // Инсет-карта (Эконом)
+  // Инсет-карта
   const insetMap = new ymaps.Map('inset-mini-map', {
     center: [54.628388, 39.710390], zoom: 15, controls: []
   });
@@ -354,20 +378,46 @@ function openModal(id, map) {
     });
   }
   
-  // Заполнение только названия, адреса и ссылки
   document.getElementById('modal-name').textContent = building.name;
   document.getElementById('modal-addr').textContent = building.fullAddress;
   document.getElementById('modal-link').href = building.maplink;
+  
+  // Логика видеоплеера
+  const placeholderDiv = document.getElementById('modal-placeholder');
+  const videoElem = document.getElementById('modal-video-elem');
+  const playBtn = document.getElementById('modal-play-btn');
+  
+  videoElem.pause();
+  
+  if (building.video && building.video.trim()) {
+    placeholderDiv.style.display = 'none';
+    videoElem.src = building.video;
+    videoElem.load();
+  } else {
+    placeholderDiv.style.display = 'flex';
+    videoElem.src = '';
+  }
+  
+  playBtn.onclick = () => {
+    if (building.video && building.video.trim()) {
+      placeholderDiv.style.display = 'none';
+      videoElem.play().catch(() => alert("Нажмите play на плеере"));
+    } else {
+      alert(`🎥 Видео для корпуса «${building.label}» пока нет`);
+    }
+  };
   
   document.getElementById('modal').classList.add('visible');
 }
 
 document.getElementById('modal-close').onclick = () => {
   document.getElementById('modal').classList.remove('visible');
+  document.getElementById('modal-video-elem').pause();
 };
 document.getElementById('modal').onclick = (e) => {
   if (e.target === document.getElementById('modal')) {
     document.getElementById('modal').classList.remove('visible');
+    document.getElementById('modal-video-elem').pause();
   }
 };
 </script>
