@@ -108,18 +108,50 @@ header span { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.05em; t
   overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.6); position: relative;
 }
 
-/* Блок видео обратно на месте */
+/* Блок видео и меню выбора */
 .modal-video {
   width: 100%; aspect-ratio: 16/9; background: #000; position: relative;
+  overflow: hidden;
 }
 .modal-video video {
-  width: 100%; height: 100%; object-fit: cover; display: block;
+  width: 100%; height: 100%; object-fit: cover; display: none;
 }
 .modal-video .modal-placeholder {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 12px; background: linear-gradient(135deg, #1a1f2e, #0d1117); z-index: 2;
 }
+
+/* Контейнер меню выбора видео */
+.video-menu {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: linear-gradient(135deg, #1c2030, #0d0f14);
+  z-index: 5; display: none; flex-direction: column; 
+  padding: 15px; overflow-y: auto; gap: 8px;
+}
+.video-menu-title {
+  font-family: 'Unbounded', sans-serif; font-size: 11px; color: var(--accent);
+  text-transform: uppercase; margin-bottom: 4px; text-align: center;
+}
+.video-menu-btn {
+  width: 100%; background: rgba(232,184,75,0.1); border: 1px solid var(--border);
+  color: var(--text); padding: 10px 14px; border-radius: 8px; cursor: pointer;
+  font-family: 'Raleway', sans-serif; font-size: 13px; font-weight: 500; text-align: left;
+  transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;
+}
+.video-menu-btn:hover {
+  background: var(--accent); color: #0d0f14; font-weight: 600; border-color: var(--accent);
+}
+
+/* Кнопка возврата к меню */
+.back-to-menu-btn {
+  position: absolute; top: 10px; left: 10px; z-index: 10;
+  background: rgba(13,15,20,0.85); color: var(--accent); border: 1px solid var(--accent);
+  padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  cursor: pointer; display: none; backdrop-filter: blur(4px);
+}
+.back-to-menu-btn:hover { background: var(--accent); color: #0d0f14; }
+
 .play-btn {
   width: 56px; height: 56px; background: var(--accent); color: #0d0f14;
   border-radius: 50%; display: flex; align-items: center; justify-content: center;
@@ -196,12 +228,22 @@ header span { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.05em; t
   <div class="modal-content">
     <div class="modal-close" id="modal-close">✕</div>
     <div class="modal-video" id="modal-video">
+      
+      <button class="back-to-menu-btn" id="modal-back-to-menu">← К выбору видео</button>
+      
+      <div class="video-menu" id="modal-video-menu">
+        <div class="video-menu-title">Выберите видео для просмотра:</div>
+        <div id="video-buttons-list"></div>
+      </div>
+
       <div class="modal-placeholder" id="modal-placeholder">
         <div class="play-btn" id="modal-play-btn">▶</div>
-        <span style="font-size: 12px; color: var(--muted);">Видео-превью корпуса</span>
+        <span style="font-size: 12px; color: var(--muted);" id="placeholder-text">Видео-превью корпуса</span>
       </div>
+
       <video id="modal-video-elem" controls preload="none"></video>
     </div>
+    
     <div class="modal-info">
       <div class="modal-name" id="modal-name"></div>
       <div class="modal-addr" id="modal-addr"></div>
@@ -211,15 +253,124 @@ header span { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.05em; t
 </div>
 
 <script>
+// Распределенные 21 видео по 7 вашим корпусам (Экономический остался без роликов, как в шаблоне)
 const buildings = [
-  { id:0, label:"ИЕН | ИИЯ | ИИФНП | ИФМиКН", address:"ул. Свободы, 46", name:"ИЕН | ИИЯ | ИИФНП | ИФМиКН", fullAddress:"📍 ул. Свободы, 46, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_svobody_46/", lat:54.628879, lng:39.752508, icon:"⭐", video:"video/Glavniy_kafe.mp4" }, // ТЕСТОВЫЙ РОЛИК ДЛЯ ГЛАВНОГО КОРПУСА ВСТАВЛЕН СЮДА
-  { id:1, label:"Корпус 46к1", address:"ул. Свободы, 46к1", name:"Учебный корпус (46к1)", fullAddress:"📍 ул. Свободы, 46к1, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_svobody_46k1/", lat:54.630010, lng:39.752682, icon:"🏫", video:"" },
-  { id:2, label:"Корпус 46к2", address:"ул. Свободы, 46к2", name:"Учебный корпус (46к2)", fullAddress:"📍 ул. Свободы, 46к2, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_svobody_46k2/", lat:54.629782, lng:39.752190, icon:"🏫", video:"" },
-  { id:3, label:"Ленина, 20", address:"ул. Ленина, 20", name:"Корпус на Ленина", fullAddress:"📍 ул. Ленина, 20, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_lenina_20/", lat:54.624633, lng:39.752238, icon:"🏰", video:"" },
-  { id:4, label:"ФРФНК", address:"ул. Ленина, 20А", name:"ФРФНК", fullAddress:"📍 ул. Ленина, 20А, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_lenina_20a/", lat:54.624953, lng:39.752631, icon:"🏢", video:"" },
-  { id:5, label:"ФФКС | ИППСР", address:"ул. Полонского, 18", name:"ФФКС | ИППСР", fullAddress:"📍 ул. Полонского, 18, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_polonskogo_18/", lat:54.629275, lng:39.747663, icon:"🧠", video:"" },
-  { id:6, label:"Факультет экономики", address:"Первомайский пр-т, 49/2", name:"Факультет экономики", fullAddress:"📍 Первомайский проспект, 49/2, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/pervomayskiy_prospekt_49k2/", lat:54.628388, lng:39.710390, icon:"📊", video:"" },
-  { id:7, label:"ЮИ", address:"ул. Семинарская, 15", name:"Юридический институт (ЮИ)", fullAddress:"📍 ул. Семинарская, 15, Рязань", maplink:"https://yandex.ru/maps/207/ryazan/house/seminarskaya_ulitsa_15/", lat:54.632567, lng:39.736563, icon:"⚖️", video:"" } 
+  { 
+    id:0, 
+    label:"ИЕН | ИИЯ | ИИФНП | ИФМиКН", 
+    address:"ул. Свободы, 46", 
+    name:"Главный корпус (Соборная 46)", 
+    fullAddress:"📍 ул. Свободы, 46, Рязань", 
+    maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_svobody_46/", 
+    lat:54.628879, lng:39.752508, 
+    icon:"⭐", 
+    videos: [
+      { label: "🎥 Директорат ИФМиКН", src: "video/Glavniy_direcorat_IFMiKN.mp4" },
+      { label: "🎥 Директорат ИИФНП", src: "video/Glavniy_directorat_IIFNP.mp4" },
+      { label: "🎥 Директорат ИИЯ", src: "video/Glavniy_directorat_IIYA.mp4" },
+      { label: "☕ Главное кафе", src: "video/Glavniy_kafe.mp4" },
+      { label: "🍕 Буфет (Серый корпус)", src: "video/Seriy_korpus_bufet.mp4" },
+      { label: "💼 Директорат ИЕН (Серый корпус)", src: "video/Seriy_korpus_directorat_IEN.mp4" },
+      { label: "🥗 Столовая", src: "video/Stolovay.mp4" },
+      { label: "🚻 Мужской туалет", src: "video/Glavniy_tualet_M.mp4" },
+      { label: "🚻 Женский туалет", src: "video/Glavniy_tualet_J.mp4" },
+      { label: "🚻 Мужской туалет (Серый корпус)", src: "video/Seriy_korpus_tualet_M.mp4" }
+    ]
+  },
+  { 
+    id:1, 
+    label:"Корпус 46к1", 
+    address:"ул. Свободы, 46к1", 
+    name:"Учебный корпус (46к1)", 
+    fullAddress:"📍 ул. Свободы, 46к1, Рязань", 
+    maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_svobody_46k1/", 
+    lat:54.630010, lng:39.752682, 
+    icon:"🏫", 
+    videos: [
+      { label: "🧱 Красный корпус", src: "video/Krasniy_Korpus.mp4" }
+    ] 
+  },
+  { 
+    id:2, 
+    label:"Корпус 46к2", 
+    address:"ул. Свободы, 46к2", 
+    name:"Учебный корпус (46к2)", 
+    fullAddress:"📍 ул. Свободы, 46к2, Рязань", 
+    maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_svobody_46k2/", 
+    lat:54.629782, lng:39.752190, 
+    icon:"🏫", 
+    videos: [
+      { label: "💪 ФОК (Физкультурно-оздоровительный комплекс)", src: "video/Fok.mp4" }
+    ] 
+  },
+  { 
+    id:3, 
+    label:"Ленина, 20", 
+    address:"ул. Ленина, 20", 
+    name:"Корпус на Ленина, 20", 
+    fullAddress:"📍 ул. Ленина, 20, Рязань", 
+    maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_lenina_20/", 
+    lat:54.624633, lng:39.752238, 
+    icon:"🏰", 
+    videos: [
+      { label: "☕ Буфет", src: "video/Fil_bufet.mp4" },
+      { label: "🚻 Туалет (М/Ж)", src: "video/Fil_tualet_MJ.mp4" }
+    ] 
+  },
+  { 
+    id:4, 
+    label:"ФРФНК", 
+    address:"ул. Ленина, 20А", 
+    name:"ФРФНК (Ленина 20)", 
+    fullAddress:"📍 ул. Ленина, 20А, Рязань", 
+    maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_lenina_20a/", 
+    lat:54.624953, lng:39.752631, 
+    icon:"🏢", 
+    videos: [
+      { label: "💼 Деканат ФРФНК", src: "video/Fil_decanat.mp4" }
+    ] 
+  },
+  { 
+    id:5, 
+    label:"ФФКС | ИППСР", 
+    address:"ул. Полонского, 18", 
+    name:"Корпус на Полонского, 18", 
+    fullAddress:"📍 ул. Полонского, 18, Рязань", 
+    maplink:"https://yandex.ru/maps/207/ryazan/house/ulitsa_polonskogo_18/", 
+    lat:54.629275, lng:39.747663, 
+    icon:"🧠", 
+    videos: [
+      { label: "💼 Деканат ФФКС", src: "video/Polonka_ffks_dekanat.mp4" },
+      { label: "💼 Директорат ИППСР", src: "video/Polonka_directorat_IPPSR.mp4" },
+      { label: "☕ Буфет", src: "video/Polonka_bufet.mp4" },
+      { label: "🚻 Женский туалет", src: "video/Polonka_tualet_J.mp4" },
+      { label: "🚻 Мужской туалет", src: "video/Polonka_tualet_M.mp4" }
+    ] 
+  },
+  { 
+    id:6, 
+    label:"Факультет экономики", 
+    address:"Первомайский пр-т, 49/2", 
+    name:"Факультет экономики", 
+    fullAddress:"📍 Первомайский проспект, 49/2, Рязань", 
+    maplink:"https://yandex.ru/maps/207/ryazan/house/pervomayskiy_prospekt_49k2/", 
+    lat:54.628388, lng:39.710390, 
+    icon:"📊", 
+    videos: [] 
+  },
+  { 
+    id:7, 
+    label:"ЮИ", 
+    address:"ул. Семинарская, 15", 
+    name:"Юридический институт (ЮИ)", 
+    fullAddress:"📍 ул. Семинарская, 15, Рязань", 
+    maplink:"https://yandex.ru/maps/207/ryazan/house/seminarskaya_ulitsa_15/", 
+    lat:54.632567, lng:39.736563, 
+    icon:"⚖️", 
+    videos: [
+      { label: "💼 Семинарская 15 (ЮИ)", src: "video/Directorat_UI.mp4" }
+    ] 
+  } 
 ];
 
 let activeId = null;
@@ -382,42 +533,84 @@ function openModal(id, map) {
   document.getElementById('modal-addr').textContent = building.fullAddress;
   document.getElementById('modal-link').href = building.maplink;
   
-  // Логика видеоплеера
+  // Получаем элементы интерфейса видео
   const placeholderDiv = document.getElementById('modal-placeholder');
   const videoElem = document.getElementById('modal-video-elem');
-  const playBtn = document.getElementById('modal-play-btn');
+  const videoMenu = document.getElementById('modal-video-menu');
+  const buttonsList = document.getElementById('video-buttons-list');
+  const backMenuBtn = document.getElementById('modal-back-to-menu');
   
   videoElem.pause();
+  videoElem.src = '';
+  videoElem.style.display = 'none';
+  backMenuBtn.style.display = 'none';
   
-  if (building.video && building.video.trim()) {
-    placeholderDiv.style.display = 'none';
-    videoElem.src = building.video;
-    videoElem.load();
-  } else {
-    placeholderDiv.style.display = 'flex';
-    videoElem.src = '';
-  }
-  
-  playBtn.onclick = () => {
-    if (building.video && building.video.trim()) {
+  // Логика отображения видео / меню выбора
+  if (building.videos && building.videos.length > 0) {
+    if (building.videos.length === 1) {
+      // Если видео всего одно, показываем его сразу без выпадающего списка
       placeholderDiv.style.display = 'none';
-      videoElem.play().catch(() => alert("Нажмите play на плеере"));
+      videoMenu.style.display = 'none';
+      videoElem.style.display = 'block';
+      videoElem.src = building.videos[0].src;
+      videoElem.load();
     } else {
-      alert(`🎥 Видео для корпуса «${building.label}» пока нет`);
+      // Если видео МНОГО, сначала строим меню выбора
+      placeholderDiv.style.display = 'none';
+      videoMenu.style.display = 'flex';
+      buttonsList.innerHTML = ''; // Очищаем старые кнопки
+      
+      building.videos.forEach(vid => {
+        const btn = document.createElement('button');
+        btn.className = 'video-menu-btn';
+        btn.innerHTML = vid.label;
+        btn.onclick = () => {
+          videoMenu.style.display = 'none';
+          videoElem.style.display = 'block';
+          backMenuBtn.style.display = 'block'; // Показываем кнопку возврата к меню
+          videoElem.src = vid.src;
+          videoElem.load();
+          videoElem.play().catch(() => {});
+        };
+        buttonsList.appendChild(btn);
+      });
     }
+  } else {
+    // Видео нет вообще
+    placeholderDiv.style.display = 'flex';
+    videoMenu.style.display = 'none';
+    document.getElementById('placeholder-text').textContent = `🎥 Видео для корпуса «${building.label}» пока нет`;
+  }
+
+  // Логика кнопки «Назад к выбору»
+  backMenuBtn.onclick = () => {
+    videoElem.pause();
+    videoElem.src = '';
+    videoElem.style.display = 'none';
+    backMenuBtn.style.display = 'none';
+    videoMenu.style.display = 'flex';
+  };
+  
+  // Клик по большой кнопке Play на пустой заглушке
+  document.getElementById('modal-play-btn').onclick = () => {
+    alert(`🎥 Для данного корпуса пока не загружены видео-материалы.`);
   };
   
   document.getElementById('modal').classList.add('visible');
 }
 
-document.getElementById('modal-close').onclick = () => {
+// Функции закрытия модалки
+function closeModal() {
   document.getElementById('modal').classList.remove('visible');
-  document.getElementById('modal-video-elem').pause();
-};
+  const videoElem = document.getElementById('modal-video-elem');
+  videoElem.pause();
+  videoElem.src = '';
+}
+
+document.getElementById('modal-close').onclick = closeModal;
 document.getElementById('modal').onclick = (e) => {
   if (e.target === document.getElementById('modal')) {
-    document.getElementById('modal').classList.remove('visible');
-    document.getElementById('modal-video-elem').pause();
+    closeModal();
   }
 };
 </script>
