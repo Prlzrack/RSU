@@ -176,13 +176,14 @@ header span { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.05em; t
   cursor: pointer; font-size: 16px; color: white; z-index: 1020;
 }
 
-/* Навигационная лента кнопок */
+/* Навигационная лента кнопок с фиксацией высоты и отступами для мобильных */
 .chips {
   position: relative;
   display: flex; 
   flex-wrap: nowrap; 
   gap: 8px; 
-  padding: 12px; 
+  padding: 12px 16px 20px 16px; /* Больший отступ снизу защищает от зажатия краем экрана */
+  min-height: 68px; /* Не даёт контейнеру схлопываться */
   z-index: 200;
   background: var(--bg);
   border-top: 1px solid var(--border);
@@ -202,7 +203,17 @@ header span { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.05em; t
   header { height: 48px; }
   .layout { height: calc(100vh - 48px); }
   .inset-map { width: 150px; height: 110px; bottom: 15px; left: 8px; }
-  .chip { padding: 6px 12px; font-size: 10px; }
+  
+  /* Идеальная подгонка ленты под экраны телефонов */
+  .chips {
+    padding: 10px 12px 18px 12px;
+    min-height: 60px;
+  }
+  .chip { 
+    padding: 6px 12px; 
+    font-size: 11px; 
+    line-height: 1.2;
+  }
 }
 </style>
 </head>
@@ -253,7 +264,7 @@ header span { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.05em; t
 </div>
 
 <script>
-// Распределенные 21 видео по 7 вашим корпусам (Экономический остался без роликов, как в шаблоне)
+// Все 21 видео распределены по нужным зданиям
 const buildings = [
   { 
     id:0, 
@@ -533,7 +544,6 @@ function openModal(id, map) {
   document.getElementById('modal-addr').textContent = building.fullAddress;
   document.getElementById('modal-link').href = building.maplink;
   
-  // Получаем элементы интерфейса видео
   const placeholderDiv = document.getElementById('modal-placeholder');
   const videoElem = document.getElementById('modal-video-elem');
   const videoMenu = document.getElementById('modal-video-menu');
@@ -545,20 +555,17 @@ function openModal(id, map) {
   videoElem.style.display = 'none';
   backMenuBtn.style.display = 'none';
   
-  // Логика отображения видео / меню выбора
   if (building.videos && building.videos.length > 0) {
     if (building.videos.length === 1) {
-      // Если видео всего одно, показываем его сразу без выпадающего списка
       placeholderDiv.style.display = 'none';
       videoMenu.style.display = 'none';
       videoElem.style.display = 'block';
       videoElem.src = building.videos[0].src;
       videoElem.load();
     } else {
-      // Если видео МНОГО, сначала строим меню выбора
       placeholderDiv.style.display = 'none';
       videoMenu.style.display = 'flex';
-      buttonsList.innerHTML = ''; // Очищаем старые кнопки
+      buttonsList.innerHTML = '';
       
       building.videos.forEach(vid => {
         const btn = document.createElement('button');
@@ -567,7 +574,7 @@ function openModal(id, map) {
         btn.onclick = () => {
           videoMenu.style.display = 'none';
           videoElem.style.display = 'block';
-          backMenuBtn.style.display = 'block'; // Показываем кнопку возврата к меню
+          backMenuBtn.style.display = 'block';
           videoElem.src = vid.src;
           videoElem.load();
           videoElem.play().catch(() => {});
@@ -576,13 +583,11 @@ function openModal(id, map) {
       });
     }
   } else {
-    // Видео нет вообще
     placeholderDiv.style.display = 'flex';
     videoMenu.style.display = 'none';
     document.getElementById('placeholder-text').textContent = `🎥 Видео для корпуса «${building.label}» пока нет`;
   }
 
-  // Логика кнопки «Назад к выбору»
   backMenuBtn.onclick = () => {
     videoElem.pause();
     videoElem.src = '';
@@ -591,7 +596,6 @@ function openModal(id, map) {
     videoMenu.style.display = 'flex';
   };
   
-  // Клик по большой кнопке Play на пустой заглушке
   document.getElementById('modal-play-btn').onclick = () => {
     alert(`🎥 Для данного корпуса пока не загружены видео-материалы.`);
   };
@@ -599,7 +603,6 @@ function openModal(id, map) {
   document.getElementById('modal').classList.add('visible');
 }
 
-// Функции закрытия модалки
 function closeModal() {
   document.getElementById('modal').classList.remove('visible');
   const videoElem = document.getElementById('modal-video-elem');
